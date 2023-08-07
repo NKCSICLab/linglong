@@ -28,6 +28,7 @@ class Model(nn.Module):
             cls,
             config: Union[str, Dict[str, Any]],
             load_model: Optional[str] = None,
+            load_lora_model: Optional[str] = None,
             device: Optional = None,
             strict: bool = True,
     ) -> 'Self':
@@ -39,7 +40,18 @@ class Model(nn.Module):
         else:
             model = cls(mcpt.models.MCPTModel(config))
         if load_model is not None:
-            model.load_state_dict(torch.load(load_model, map_location=device), strict=strict)
+            model.load_state_dict(torch.load(load_model, map_location=device), strict=False)
+        if load_lora_model is not None:
+            model.load_state_dict(torch.load(load_lora_model, map_location=device), strict=False)
+        # print(model.transformer.wte.weight)
+        # print(model.transformer.blocks[0].attn.c_attn.weight)
+        # for name, param in model.transformer.blocks[0].attn.c_attn.named_parameters():
+        #     print(name)
+        #     print(param.shape)
+        #     print(param)
+        # # print(model.transformer.blocks[0].attn.c_attn.w)
+        #
+        # input()
         if device is not None:
             model.to(device)
         return model

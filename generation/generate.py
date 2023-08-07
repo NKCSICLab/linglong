@@ -173,6 +173,7 @@ class MCPTGenerate(cmd.Cmd):
 
 def main(
         model: str,
+        lora_model: str,
         model_config: str,
         vocab: str = '../common/vocab/char-13312.txt',
         pinyin_vocab: Optional[str] = '../common/vocab/pinyin-1354.txt',
@@ -190,6 +191,7 @@ def main(
         debug: bool = False,
 ):
     load_model = model
+    load_lora_model = lora_model
     generation_config = {
         'batch_size': batch_size,
         'max_length': max_length,
@@ -224,10 +226,14 @@ def main(
             model = mcpt.Model.from_config(
                 config=model_config,
                 load_model=load_model,
+                load_lora_model=load_lora_model,
                 device=device,
             )
+            import numpy as np
+            old = model.transformer.blocks[0].attn.c_proj.weight.cpu().numpy()
             model.eval()
-
+            new = model.transformer.blocks[0].attn.c_proj.weight.cpu().numpy()
+            print(np.all(old == new))
         MCPTGenerate(
             generation_config=generation_config,
             tokenizer=tokenizer,

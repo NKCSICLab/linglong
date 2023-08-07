@@ -38,6 +38,7 @@ def work(
     model = mcpt.Model.from_config(
         config=config['model_config'],
         load_model=config['model']['checkpoint'],
+        load_lora_model=config['model_lora']['checkpoint'],
         device=device,
     )
     model.eval()

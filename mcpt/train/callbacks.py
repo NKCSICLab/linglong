@@ -1,5 +1,6 @@
 import torch
 import pathlib
+import loralib as lora
 
 from typing import *
 
@@ -46,4 +47,4 @@ class ModelCheckpointCallback:
         if isinstance(self.save_frequency, int):
             if end_of_epoch or batch % self.save_frequency != 0:
                 return
-        torch.save(model.state_dict(), str(self.save_path / save_name))
+        torch.save(lora.lora_state_dict(model), str(self.save_path / save_name))

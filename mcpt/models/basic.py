@@ -1,6 +1,7 @@
 import math
 import torch
 import torch.nn as nn
+import loralib as lora
 
 from typing import *
 
@@ -29,15 +30,19 @@ class MLP(nn.Module):
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__()
-        self.c_fc = Conv1D(
-            units=config['n_embd'] * 4,
-            n_input=config['n_embd'],
-        )
-        self.c_proj = Conv1D(
-            units=config['n_embd'],
-            n_input=config['n_embd'] * 4,
-            init_std=0.02 * (1.0 / math.sqrt(2 * config['n_layer'])),
-        )
+        # self.c_fc = Conv1D(
+        #     units=config['n_embd'] * 4,
+        #     n_input=config['n_embd'],
+        # )
+        # self.c_proj = Conv1D(
+        #     units=config['n_embd'],
+        #     n_input=config['n_embd'] * 4,
+        #     init_std=0.02 * (1.0 / math.sqrt(2 * config['n_layer'])),
+        # )
+        self.c_fc = lora.Linear(in_features=config['n_embd'], out_features=config['n_embd'] * 4, r=8,
+                                fan_in_fan_out=True)
+        self.c_proj = lora.Linear(in_features=config['n_embd'] * 4, out_features=config['n_embd'], r=8,
+                                  fan_in_fan_out=True)
         self.act = nn.GELU()
         self.dropout = nn.Dropout(config['resid_dropout'])
 
@@ -59,15 +64,25 @@ class Attention(nn.Module):
         self.blk_idx = blk_idx
         self.stride = config.get('stride')
         self.c = config.get('c')
-        self.c_attn = Conv1D(
-            units=3 * self.n_embd,
-            n_input=self.n_embd,
+        # self.c_attn = Conv1D(
+        #     units=3 * self.n_embd,
+        #     n_input=self.n_embd,
+        # )
+        self.c_attn = lora.MergedLinear(
+            self.n_embd, self.n_embd * 3,
+            r=config['lora_attn_dim'],
+            lora_alpha=config['lora_attn_alpha'],
+            lora_dropout=config['lora_dropout'],
+            enable_lora=[True, True, True],
+            fan_in_fan_out=True,
+            merge_weights=False
         )
-        self.c_proj = Conv1D(
-            units=self.n_embd,
-            n_input=self.n_embd,
-            init_std=0.02 * (1.0 / math.sqrt(2 * config['n_layer'])),
-        )
+        self.c_proj = lora.Linear(self.n_embd, self.n_embd, r=8, fan_in_fan_out=True)
+        # self.c_proj = Conv1D(
+        #     units=self.n_embd,
+        #     n_input=self.n_embd,
+        #     init_std=0.02 * (1.0 / math.sqrt(2 * config['n_layer'])),
+        # )
         self.attn_mask = None
         self.dropout = nn.Dropout(config['attn_dropout'])
 
@@ -168,8 +183,10 @@ class MCPTModel(nn.Module):
         super().__init__()
         self.config = config
         self.n_embd = config['n_embd']
-        self.wte = nn.Embedding(config['n_vocab'], self.n_embd)
-        self.wpe = nn.Embedding(config['n_ctx'], self.n_embd)
+        # self.wte = nn.Embedding(config['n_vocab'], self.n_embd)
+        # self.wpe = nn.Embedding(config['n_ctx'], self.n_embd)
+        self.wte = lora.Embedding(num_embeddings=config['n_vocab'], embedding_dim=self.n_embd, r=8)
+        self.wpe = lora.Embedding(num_embeddings=config['n_ctx'], embedding_dim=self.n_embd, r=8)
         self.drop = nn.Dropout(config['embd_dropout'])
         self.blocks = nn.ModuleList([Block(config, blk_idx=i) for i in range(config['n_layer'])])
         self.ln_f = nn.LayerNorm(self.n_embd, eps=config['epsilon'])

@@ -1,16 +1,16 @@
-train_micro_batch_size_per_gpu: 4
+train_micro_batch_size_per_gpu: 8
 gradient_accumulation_steps: 1
 optimizer:
   type: AdamW
   params:
-    lr: 8.0e-05
+    lr: 3.0e-04
     betas:
       - 0.9
       - 0.95
     eps: 1.0e-08
     weight_decay: 0.1
 fp16:
-  enabled: false
+  enabled: true
   autocast: true
 gradient_clipping: 1.0
 zero_optimization:

@@ -7,6 +7,7 @@ from typing import *
 
 import mcpt
 import mcpt.records
+import loralib as lora
 
 try:
     import horovod.torch as hvd
@@ -22,7 +23,7 @@ def main(
         training_meta: str = 'train-meta.json',
         validation_data: Optional[str] = None,
         validation_meta: str = 'valid-meta.json',
-        epochs: int = 5,
+        epochs: int = 20,
         load_model: Optional[str] = None,
         save_path: str = './ckpt',
         save_frequency: Union[int, str, List[Union[int, str]]] = 'epoch',
@@ -97,7 +98,7 @@ def main(
             n_ctx=model.config['n_ctx'],
             dp_size=hvd.size(),
         )
-        hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+        # hvd.broadcast_parameters(model.state_dict(), root_rank=0)
         hvd.broadcast_optimizer_state(optimizer, root_rank=0)
         callbacks = []
         if hvd.rank() == 0:
@@ -115,7 +116,11 @@ def main(
 
     if hvd.rank() == 0:
         print(model)
-
+    lora.mark_only_lora_as_trainable(model, 'all')
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Total parameters: {total_params}")
+    total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total trainable parameters: {total_trainable_params}")
     scaler = torch.cuda.amp.GradScaler() if training_config['fp16']['enabled'] else mcpt.stubs.Noop()
     for epoch in range(1, epochs + 1):
         if hvd.rank() == 0:
